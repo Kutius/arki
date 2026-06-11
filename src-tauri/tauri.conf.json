@@ -12,9 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "sozip",
-        "width": 800,
-        "height": 600
+        "title": "SoZip",
+        "width": 1000,
+        "height": 700,
+        "minWidth": 600,
+        "minHeight": 400,
+        "decorations": false,
+        "transparent": false,
+        "resizable": true,
+        "dragDropEnabled": true
       }
     ],
     "security": {

@@ -3,7 +3,12 @@
     "allow": [
       "Bash(Get-ChildItem -Path . -Exclude node_modules,src-tauri\\\\target,.git)",
       "Bash(Select-Object -Property Name, Mode)",
-      "Bash(pnpm add *)"
+      "Bash(pnpm add *)",
+      "Bash(cargo build *)",
+      "Bash(pnpm tauri *)",
+      "Bash(pnpm build *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
