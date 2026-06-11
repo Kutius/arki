@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path . -Exclude node_modules,src-tauri\\\\target,.git)",
+      "Bash(Select-Object -Property Name, Mode)",
+      "Bash(pnpm add *)"
+    ]
+  }
+}
