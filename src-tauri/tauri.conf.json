@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "sozip",
+  "productName": "arki",
   "version": "0.1.0",
-  "identifier": "com.kutius.sozip",
+  "identifier": "com.kutius.arki",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "SoZip",
+        "title": "Arki",
         "width": 1000,
         "height": 700,
         "minWidth": 600,
@@ -36,6 +36,20 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh",
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/kutius/arki/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

@@ -8,7 +8,15 @@
       "Bash(pnpm tauri *)",
       "Bash(pnpm build *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(cargo check *)",
+      "Bash(cargo doc *)",
+      "Bash(powershell -Command \"Compress-Archive -Path 'test-files\\\\*' -DestinationPath 'test-files.zip' -Force\")",
+      "Bash(tar -czf test-files.tar.gz -C test-files .)",
+      "Bash(where 7z)",
+      "Bash(7z a *)",
+      "Bash(where rar *)",
+      "Bash(cargo test *)"
     ]
   }
 }

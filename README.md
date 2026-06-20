@@ -1,4 +1,4 @@
-# SoZip
+# Arki
 
 A modern, minimal archive utility for Windows built with Tauri, React, and shadcn/ui.
 
@@ -53,7 +53,7 @@ pnpm tauri build
 ## Project Structure
 
 ```
-sozip/
+arki/
 ├── src/                    # Frontend source
 │   ├── components/
 │   │   ├── ui/            # shadcn/ui components

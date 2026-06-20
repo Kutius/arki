@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+         xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+         xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+
+  <Identity Name="com.kutius.arki"
+            Publisher="CN=Kutius"
+            Version="0.1.0"
+            ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Arki</DisplayName>
+    <PublisherDisplayName>Kutius</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Modern archive utility for Windows</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="Arki"
+                 Executable="arki.exe"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+                          DisplayName="Arki"
+                          Description="Modern archive utility for Windows"
+                          BackgroundColor="transparent"
+                          Square150x150Logo="Assets\Square150x150Logo.png"
+                          Square44x44Logo="Assets\Square44x44Logo.png">
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- File Explorer Context Menu for Windows 11 -->
+        <uap3:Extension Category="windows.fileExplorerContextMenus">
+          <uap3:FileExplorerContextMenus>
+            <!-- For archive files -->
+            <uap3:Type>File</uap3:Type>
+            <uap3:SupportedFileTypes>
+              <uap3:FileType>.zip</uap3:FileType>
+              <uap3:FileType>.7z</uap3:FileType>
+              <uap3:FileType>.rar</uap3:FileType>
+              <uap3:FileType>.tar</uap3:FileType>
+              <uap3:FileType>.gz</uap3:FileType>
+              <uap3:FileType>.tgz</uap3:FileType>
+              <uap3:FileType>.br</uap3:FileType>
+              <uap3:FileType>.zst</uap3:FileType>
+            </uap3:SupportedFileTypes>
+            <uap3:Verb Id="arkiOpen" Name="Open with Arki" Clsid="{D3F4A5B6-C7E8-4F9A-BC0D-3E4F5A6B7C8D}" />
+            <uap3:Verb Id="arkiExtractHere" Name="Extract Here" Clsid="{B1F2A3C4-D5E6-4F78-9A0B-1C2D3E4F5A6B}" />
+            <uap3:Verb Id="arkiExtractToFolder" Name="Extract to Folder" Clsid="{C2F3A4B5-D6E7-4F89-AB0C-2D3E4F5A6B7C}" />
+          </uap3:FileExplorerContextMenus>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Extensions>
+    <!-- COM Server registration -->
+    <com:Extension Category="windows.comServer">
+      <com:ComServer>
+        <com:SurrogateServer DisplayName="Arki Shell Extension" AppId="{6D2B7E8F-9A1C-4D3E-B5F6-7A8B9C0D1E2F}">
+          <com:Class Id="{D3F4A5B6-C7E8-4F9A-BC0D-3E4F5A6B7C8D}" DisplayName="Arki Open" />
+          <com:Class Id="{B1F2A3C4-D5E6-4F78-9A0B-1C2D3E4F5A6B}" DisplayName="Arki Extract Here" />
+          <com:Class Id="{C2F3A4B5-D6E7-4F89-AB0C-2D3E4F5A6B7C}" DisplayName="Arki Extract to Folder" />
+        </com:SurrogateServer>
+      </com:ComServer>
+    </com:Extension>
+  </Extensions>
+
+</Package>
