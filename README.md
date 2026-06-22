@@ -1,33 +1,43 @@
 # Arki
 
-A modern, minimal archive utility for Windows built with Tauri, React, and shadcn/ui.
+A fast, minimal archive utility for Windows. Built with Tauri v2, React 19, and shadcn/ui. UI style inspired by Linear.
 
 ## Features
 
-- 🗂️ **Browse Archives** - View archive contents in a clean, file-explorer-like interface
-- 📦 **Extract Archives** - Extract ZIP files with progress tracking
-- 🎨 **Modern UI** - Linear-inspired design with dark mode
-- ⚡ **Fast & Lightweight** - Built with Tauri for minimal resource usage
-- 🖱️ **Drag & Drop** - Drop archive files to open them (coming soon)
-- 📋 **Context Menu** - Right-click actions for quick operations
+- Browse archive contents in a file-explorer interface
+- Extract archives with progress tracking and disk space pre-check
+- Quick extract to a folder next to the archive, auto-open on finish
+- Create ZIP and TAR.GZ archives
+- Password-protected archive support (ZIP AES256, 7z)
+- Windows Explorer right-click context menu integration
+- Drag and drop to open archives
+- Keyboard-first navigation
+- Dark mode
 
 ## Supported Formats
 
-| Format | Read | Write |
-|--------|------|-------|
-| ZIP    | ✅   | 🔜    |
-| 7z     | 🔜   | 🔜    |
-| TAR    | 🔜   | 🔜    |
-| RAR    | 🔜   | ❌    |
+| Format   | Read | Create | Notes                  |
+|----------|------|--------|------------------------|
+| ZIP      | ✅    | ✅      | Encrypted (AES256)     |
+| TAR.GZ   | ✅    | ✅      |                        |
+| GZ       | ✅    | -      | Single file            |
+| Brotli   | ✅    | -      |                        |
+| Zstandard| ✅    | -      |                        |
+| 7z       | ✅    | -      | Encrypted              |
+| RAR      | ✅    | -      | Read-only              |
 
 ## Tech Stack
 
-- **Frontend**: React 19 + TypeScript + Vite
-- **UI Components**: shadcn/ui + Radix UI
-- **Styling**: Tailwind CSS 4
-- **State Management**: Zustand
-- **Desktop Runtime**: Tauri v2
-- **Compression**: Rust `zip` crate
+| Layer            | Technology                    |
+|------------------|-------------------------------|
+| Desktop runtime  | Tauri v2                      |
+| Frontend         | React 19 + TypeScript 5.8     |
+| Build            | Vite 7                        |
+| UI components    | shadcn/ui (copied, not npm)   |
+| Styling          | Tailwind CSS 4                |
+| State            | Zustand 5                     |
+| Icons            | Lucide React                  |
+| Compression      | zip, tar, flate2, brotli, zstd, sevenz-rust, unrar |
 
 ## Development
 
@@ -37,47 +47,59 @@ A modern, minimal archive utility for Windows built with Tauri, React, and shadc
 - pnpm
 - Rust toolchain
 
-### Setup
+### Commands
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Run in development mode
-pnpm tauri dev
-
-# Build for production
-pnpm tauri build
+pnpm install          # Install dependencies
+pnpm tauri dev        # Development mode
+pnpm tauri build      # Production build (frontend + Rust + installer)
+pnpm build            # Frontend only
+cd src-tauri && cargo test   # Run Rust tests (27 tests)
 ```
 
 ## Project Structure
 
 ```
 arki/
-├── src/                    # Frontend source
+├── src/                          # Frontend
 │   ├── components/
-│   │   ├── ui/            # shadcn/ui components
-│   │   ├── layout/        # Layout components (Sidebar, TitleBar, etc.)
-│   │   ├── file-list/     # File list view
-│   │   ├── detail-panel/  # File details panel
-│   │   └── dialogs/       # Modal dialogs
-│   ├── store/             # Zustand state management
-│   ├── lib/               # Utility functions
-│   └── App.tsx            # Main app component
-├── src-tauri/             # Tauri/Rust source
+│   │   ├── ui/                   # shadcn/ui components
+│   │   ├── layout/               # Sidebar, Toolbar, StatusBar, HistoryPanel
+│   │   ├── file-list/            # FileListView
+│   │   ├── file-tree/            # FileTree
+│   │   ├── detail-panel/         # DetailPanel
+│   │   └── dialogs/              # Extract, Create, Password, Settings
+│   ├── store/                    # Zustand store
+│   ├── lib/                      # Utilities (cn, formatFileSize)
+│   ├── hooks/                    # Custom hooks
+│   └── App.tsx
+├── src-tauri/                    # Rust backend
 │   ├── src/
-│   │   ├── services/      # Archive service layer
-│   │   └── lib.rs         # Tauri commands
-│   └── Cargo.toml         # Rust dependencies
-└── public/                # Static assets
+│   │   ├── lib.rs                # Tauri commands
+│   │   └── services/
+│   │       ├── archive.rs        # ArchiveService (unified interface)
+│   │       ├── archive_handler.rs# ArchiveHandler trait
+│   │       ├── dispatcher.rs     # Format dispatcher
+│   │       ├── handlers/         # Format implementations
+│   │       ├── history.rs        # History service
+│   │       └── settings.rs       # Settings service
+│   ├── Cargo.toml
+│   └── tests/                    # Integration tests
+├── package.json
+└── vite.config.ts
 ```
 
 ## Design Principles
 
-- **Information Density** - Every pixel serves a purpose
-- **Minimal Aesthetic** - Clean, borderless design inspired by Linear
-- **Keyboard First** - All actions accessible via keyboard
-- **Fast Feedback** - Immediate visual response to user actions
+- **Information density** - Every pixel serves a purpose. No wasted space.
+- **Minimal aesthetic** - Clean, borderless design. Inspired by Linear.
+- **Keyboard first** - All actions accessible via keyboard.
+- **Fast feedback** - Immediate visual response to every user action.
+
+## Build Output
+
+- MSI: `src-tauri/target/release/bundle/msi/`
+- NSIS installer: `src-tauri/target/release/bundle/nsis/`
 
 ## License
 
