@@ -6,6 +6,7 @@ use std::sync::Arc;
 use super::dispatcher;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ArchiveEntry {
     pub name: String,
     pub path: String,
@@ -15,13 +16,32 @@ pub struct ArchiveEntry {
     pub modified: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthInfo {
+    /// "ok" | "warning"
+    pub status: String,
+    pub warnings: Vec<String>,
+}
+
+impl Default for HealthInfo {
+    fn default() -> Self {
+        Self {
+            status: "ok".to_string(),
+            warnings: vec![],
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ArchiveInfo {
     pub entries: Vec<ArchiveEntry>,
     pub total_size: u64,
     pub compressed_size: u64,
     pub format: String,
     pub encrypted: bool,
+    pub health: HealthInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,7 +83,10 @@ impl ArchiveService {
     pub fn list_archive(path: &Path) -> Result<ArchiveInfo, String> {
         let format = dispatcher::DISPATCHER.detect_format(path)?;
         let handler = dispatcher::DISPATCHER.get_handler(&format)?;
-        handler.list(path)
+        let mut info = handler.list(path)?;
+        // Lightweight integrity check alongside listing
+        info.health = handler.verify(path);
+        Ok(info)
     }
 
     /// Extract an archive to the specified destination

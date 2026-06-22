@@ -10,13 +10,16 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "../../lib/utils";
-import { formatFileSize } from "../../lib/format";
+import { formatFileSize, getPreviewType } from "../../lib/format";
 import { FileIcon } from "../../lib/fileIcons";
 import { useStaggerReveal } from "../../lib/animations";
 import { ScrollArea } from "../ui/scroll-area";
 import type { ArchiveEntry } from "../../store/archiveStore";
+import { useArchiveStore } from "../../store/archiveStore";
 
 interface FileListViewProps {
   entries: ArchiveEntry[];
@@ -29,6 +32,8 @@ interface FileListViewProps {
   selectedEntries?: Set<string>;
   searchVisible?: boolean;
   onSearchClose?: () => void;
+  /** When set, the DetailPanel is showing this entry — suppress hover preview. */
+  pinnedEntry?: ArchiveEntry | null;
 }
 
 type SortField = "name" | "size" | "modified";
@@ -46,6 +51,7 @@ export function FileListView({
   selectedEntries,
   searchVisible = false,
   onSearchClose,
+  pinnedEntry,
 }: FileListViewProps) {
   const [selectedEntry, setSelectedEntry] = useState<ArchiveEntry | null>(null);
   const [sortField, setSortField] = useState<SortField>("name");
@@ -58,6 +64,13 @@ export function FileListView({
   const searchRef = useRef<HTMLInputElement>(null);
   const scrollContentRef = useRef<HTMLDivElement>(null);
 
+  // Hover preview state
+  const [hoveredEntry, setHoveredEntry] = useState<ArchiveEntry | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewRowRect, setPreviewRowRect] = useState<DOMRect | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  const hoveredEntryRef = useRef<ArchiveEntry | null>(null);
+
   // Staggered row reveal on archive open / directory navigate
   useStaggerReveal(scrollContentRef, {
     itemSelector: "[data-stagger]",
@@ -65,6 +78,55 @@ export function FileListView({
     maxItems: 30,
     offsetY: 4,
   });
+
+  // Hover preview: delayed show after 300ms
+  useEffect(() => {
+    // Don't show if a file is pinned in DetailPanel
+    if (pinnedEntry) {
+      setShowPreview(false);
+      return;
+    }
+    if (!hoveredEntry || hoveredEntry.isDirectory) {
+      setShowPreview(false);
+      return;
+    }
+
+    // Skip if no previewable content
+    if (!getPreviewType(hoveredEntry.name)) {
+      setShowPreview(false);
+      return;
+    }
+
+    hoverTimerRef.current = requestAnimationFrame(() => {
+      hoverTimerRef.current = setTimeout(() => {
+        // Verify the entry is still hovered (ref check avoids stale closure)
+        if (hoveredEntryRef.current === hoveredEntry) {
+          setShowPreview(true);
+        }
+      }, 300) as unknown as ReturnType<typeof requestAnimationFrame>;
+    });
+
+    return () => {
+      if (hoverTimerRef.current !== null) {
+        clearTimeout(hoverTimerRef.current as unknown as number);
+        cancelAnimationFrame(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+    };
+  }, [hoveredEntry, pinnedEntry]);
+
+  const handleRowMouseEnter = useCallback((entry: ArchiveEntry, e: React.MouseEvent) => {
+    hoveredEntryRef.current = entry;
+    setHoveredEntry(entry);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setPreviewRowRect(rect);
+  }, []);
+
+  const handleRowMouseLeave = useCallback(() => {
+    hoveredEntryRef.current = null;
+    setHoveredEntry(null);
+    setShowPreview(false);
+  }, []);
 
   const handleEntryClick = (entry: ArchiveEntry, e: React.MouseEvent, index: number) => {
     setFocusedIndex(index);
@@ -75,6 +137,8 @@ export function FileListView({
       // Shift+Click: range select
       onEntryMultiSelect?.(entry, false);
     } else {
+      // Skip if already selected — prevents DetailPanel flicker from re-mounting
+      if (selectedEntry?.path === entry.path) return;
       setSelectedEntry(entry);
       onEntrySelect?.(entry);
     }
@@ -316,18 +380,18 @@ export function FileListView({
           disabled={pathParts.length === 0}
           title="Go back"
         >
-          <ArrowLeft className="h-3 w-3" />
+          <ArrowLeft className="size-3" />
         </button>
         <button
           className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground/70 hover:text-foreground transition-colors"
           onClick={() => onNavigate?.("/")}
         >
-          <Home className="h-3 w-3" />
+          <Home className="size-3" />
           Root
         </button>
         {pathParts.map((part, index) => (
           <div key={index} className="flex min-w-0 items-center gap-1">
-            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/30" />
+            <ChevronRight className="size-3 shrink-0 text-muted-foreground/30" />
             <button
               className="truncate text-xs text-muted-foreground/70 hover:text-foreground transition-colors"
               onClick={() =>
@@ -375,7 +439,7 @@ export function FileListView({
       {searchVisible && (
         <div className="flex h-9 items-center gap-1.5 border-b px-3">
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/40" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground/40" />
             <input
               ref={searchRef}
               type="text"
@@ -395,7 +459,7 @@ export function FileListView({
                 onClick={() => setSearchQuery("")}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors"
               >
-                <X className="h-3 w-3" />
+                <X className="size-3" />
               </button>
             )}
           </div>
@@ -409,7 +473,7 @@ export function FileListView({
             )}
             title="Toggle regex search"
           >
-            <Regex className="h-3 w-3" />
+            <Regex className="size-3" />
           </button>
           <div className="relative">
             <select
@@ -423,20 +487,21 @@ export function FileListView({
               <option value="archives">Archives</option>
               <option value="other">Other</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/40" />
+            <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground/40" />
           </div>
         </div>
       )}
 
       {/* File List */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div
+          key={searchQuery || "__all__"}
           ref={(node) => {
             // Assign to both refs
             (listRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
             (scrollContentRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
           }}
-          className="outline-none"
+          className={cn("outline-none", searchQuery && "search-results-animate")}
           tabIndex={0}
           onKeyDown={handleKeyDown}
         >
@@ -447,6 +512,7 @@ export function FileListView({
             <div
               key={entry.path}
               data-stagger
+              data-row-path={entry.path}
               className={cn(
                 "flex h-[34px] cursor-pointer items-center px-3 transition-colors relative",
                 "hover:bg-accent/50",
@@ -455,6 +521,8 @@ export function FileListView({
               )}
               onClick={(e) => handleEntryClick(entry, e, index)}
               onDoubleClick={() => handleEntryDoubleClick(entry)}
+              onMouseEnter={(e) => handleRowMouseEnter(entry, e)}
+              onMouseLeave={handleRowMouseLeave}
             >
               {/* Selection accent bar */}
               {(isMultiSelected || selectedEntry?.path === entry.path) && (
@@ -483,7 +551,7 @@ export function FileListView({
 
           {filteredEntries.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <FolderOpen className="mb-2 h-8 w-8" />
+              <FolderOpen className="size-8 mb-2" />
               <p className="text-sm">
                 {searchQuery ? "No matching files" : "No files found"}
               </p>
@@ -491,13 +559,21 @@ export function FileListView({
           )}
         </div>
       </ScrollArea>
+
+      {/* Hover Preview — rendered as portal to escape overflow clipping */}
+      {showPreview && hoveredEntry && previewRowRect && !pinnedEntry && (
+        <HoverPreview
+          entry={hoveredEntry}
+          rowRect={previewRowRect}
+        />
+      )}
     </div>
   );
 }
 
 function EntryIcon({ entry }: { entry: ArchiveEntry }) {
   if (entry.isDirectory) {
-    return <Folder className="h-4 w-4 text-blue-400/70" />;
+    return <Folder className="size-4 text-blue-400/70" />;
   }
   return <FileIcon name={entry.name} />;
 }
@@ -505,7 +581,7 @@ function EntryIcon({ entry }: { entry: ArchiveEntry }) {
 function SortIndicator({ direction }: { direction: SortDirection }) {
   return (
     <span className="inline-flex transition-transform duration-200" style={{ transform: direction === "desc" ? "rotate(180deg)" : "rotate(0deg)" }}>
-      <ArrowUp className="h-3 w-3" />
+      <ArrowUp className="size-3" />
     </span>
   );
 }
@@ -535,4 +611,139 @@ function matchesTypeFilter(
     default:
       return true;
   }
+}
+
+// ─── Hover Preview ─────────────────────────────────────────────────
+
+function HoverPreview({
+  entry,
+  rowRect,
+}: {
+  entry: ArchiveEntry;
+  rowRect: DOMRect;
+}) {
+  const previewType = getPreviewType(entry.name);
+  const currentArchive = useArchiveStore((s) => s.currentArchive);
+  const [content, setContent] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentArchive || !previewType) return;
+    let cancelled = false;
+
+    invoke<string>("preview_file", {
+      path: currentArchive,
+      entryPath: entry.path,
+    })
+      .then((base64) => {
+        if (cancelled) return;
+        if (previewType === "image") {
+          const ext = entry.name.split(".").pop()?.toLowerCase();
+          const mimeMap: Record<string, string> = {
+            jpg: "image/jpeg", jpeg: "image/jpeg",
+            png: "image/png", gif: "image/gif",
+            webp: "image/webp", svg: "image/svg+xml",
+            bmp: "image/bmp", ico: "image/x-icon",
+          };
+          setImageUrl(`data:${mimeMap[ext || ""] || "application/octet-stream"};base64,${base64}`);
+        } else {
+          const text = atob(base64);
+          const bytes = Uint8Array.from(text, (c) => c.charCodeAt(0));
+          setContent(new TextDecoder("utf-8").decode(bytes));
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [currentArchive, entry.path, entry.name, previewType]);
+
+  // Position: to the right of the row, vertically aligned
+  const CARD_W = 280;
+  const CARD_MAX_H = 200;
+  const GAP = 8;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let left = rowRect.right + GAP;
+  // Flip to left side if overflowing right edge
+  if (left + CARD_W > vw - 12) {
+    left = rowRect.left - CARD_W - GAP;
+  }
+  // Clamp to viewport
+  left = Math.max(8, Math.min(left, vw - CARD_W - 8));
+
+  let top = rowRect.top;
+  if (top + CARD_MAX_H > vh - 12) {
+    top = vh - CARD_MAX_H - 12;
+  }
+  top = Math.max(8, top);
+
+  return createPortal(
+    <div
+      className="fixed z-[100] w-[280px] max-h-[200px] rounded-lg border bg-popover shadow-lg overflow-hidden pointer-events-none preview-card-animate"
+      style={{ left, top }}
+    >
+      {loading ? (
+        <div className="flex items-center justify-center h-16">
+          <div className="h-3 w-3 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60 animate-spin" />
+        </div>
+      ) : previewType === "image" && imageUrl ? (
+        <div className="flex items-center justify-center p-2 bg-muted/20">
+          <img
+            src={imageUrl}
+            alt={entry.name}
+            className="max-h-[192px] max-w-full rounded object-contain"
+          />
+        </div>
+      ) : content !== null ? (
+        <div className="p-2.5 overflow-hidden">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <FileIcon name={entry.name} className="h-3 w-3" />
+            <span className="text-[10px] text-muted-foreground/50 truncate">{entry.name}</span>
+            <span className="ml-auto text-[9px] text-muted-foreground/30 tabular-nums">{formatFileSize(entry.size)}</span>
+          </div>
+          <pre className="text-[10px] leading-[1.5] text-foreground/50 font-mono whitespace-pre-wrap break-all max-h-[156px] overflow-hidden">
+            {previewType === "json"
+              ? formatJson(content)
+              : previewType === "xml"
+                ? formatXml(content)
+                : content.length > 2000
+                  ? content.slice(0, 2000) + "\n..."
+                  : content}
+          </pre>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-16 text-[11px] text-muted-foreground/30">
+          No preview
+        </div>
+      )}
+    </div>,
+    document.body,
+  );
+}
+
+function formatJson(content: string): string {
+  try { return JSON.stringify(JSON.parse(content), null, 2).slice(0, 2000); }
+  catch { return content.slice(0, 2000); }
+}
+
+function formatXml(content: string): string {
+  try {
+    let formatted = "";
+    let indent = 0;
+    const lines = content.replace(/>\s*</g, ">\n<").split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (trimmed.startsWith("</")) indent = Math.max(0, indent - 1);
+      formatted += "  ".repeat(indent) + trimmed + "\n";
+      if (trimmed.startsWith("<") && !trimmed.startsWith("</") && !trimmed.startsWith("<?") && !trimmed.endsWith("/>") && !/<\/[^>]+>$/.test(trimmed)) indent++;
+    }
+    return formatted.trim().slice(0, 2000);
+  }
+  catch { return content.slice(0, 2000); }
 }

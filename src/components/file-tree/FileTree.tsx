@@ -174,20 +174,25 @@ function TreeNodeComponent({
         </span>
       </div>
 
-      {expanded && hasChildren && (
-        <div>
-          {node.children.map((child) => (
-            <TreeNodeComponent
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              currentPath={currentPath}
-              onNavigate={onNavigate}
-              onFileSelect={onFileSelect}
-              isExpanded={isExpanded}
-              toggleExpand={toggleExpand}
-            />
-          ))}
+      {hasChildren && (
+        <div
+          className="grid transition-[grid-template-rows] duration-200 ease-out"
+          style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
+        >
+          <div className="overflow-hidden">
+            {node.children.map((child) => (
+              <TreeNodeComponent
+                key={child.path}
+                node={child}
+                depth={depth + 1}
+                currentPath={currentPath}
+                onNavigate={onNavigate}
+                onFileSelect={onFileSelect}
+                isExpanded={isExpanded}
+                toggleExpand={toggleExpand}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

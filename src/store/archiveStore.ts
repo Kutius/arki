@@ -47,12 +47,18 @@ export interface ArchiveEntry {
   mimeType?: string;
 }
 
+export interface HealthInfo {
+  status: string; // "ok" | "warning"
+  warnings: string[];
+}
+
 export interface ArchiveInfo {
   entries: ArchiveEntry[];
   totalSize: number;
   compressedSize: number;
   format: string;
   encrypted: boolean;
+  health: HealthInfo;
 }
 
 interface ArchiveState {
@@ -63,6 +69,7 @@ interface ArchiveState {
   compressedSize: number;
   format: string | null;
   encrypted: boolean;
+  health: HealthInfo | null;
 
   // UI state
   isLoading: boolean;
@@ -98,7 +105,7 @@ interface ArchiveState {
   setCurrentPath: (path: string) => void;
   extractArchive: (destination: string, overwrite?: boolean) => Promise<void>;
   extractArchiveHere: () => Promise<void>;
-  extractArchiveToFolder: () => Promise<void>;
+  extractArchiveToFolder: () => Promise<string | undefined>;
   extractArchiveWithPassword: (password: string) => Promise<void>;
   getDefaultExtractDestination: () => string;
   clearError: () => void;
@@ -114,6 +121,7 @@ interface ArchiveState {
   toggleFavorite: (path: string) => Promise<void>;
   loadSettings: () => Promise<void>;
   cancelOperation: () => Promise<void>;
+  checkDiskSpace: (path: string) => Promise<number>;
 }
 
 /** Apply theme to <html> and Tauri window. Exported so SettingsDialog can call it directly. */
@@ -146,6 +154,7 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
   compressedSize: 0,
   format: null,
   encrypted: false,
+  health: null,
   isLoading: false,
   error: null,
   selectedEntry: null,
@@ -204,6 +213,7 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
         compressedSize: info.compressedSize,
         format: info.format,
         encrypted: info.encrypted,
+        health: info.health,
         isLoading: false,
         currentPath: "/",
         selectedEntry: null,
@@ -241,6 +251,7 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
       compressedSize: 0,
       format: null,
       encrypted: false,
+      health: null,
       selectedEntry: null,
       currentPath: "/",
       extractProgress: null,
@@ -333,12 +344,13 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
     await get().extractArchive(destination);
   },
 
-  // Extract to folder: extract to a subfolder named after the archive
-  extractArchiveToFolder: async () => {
+  // Extract to folder: extract to a subfolder named after the archive.
+  // Returns the destination path on success (for toast actions), or undefined on failure.
+  extractArchiveToFolder: async (): Promise<string | undefined> => {
     const { currentArchive } = get();
     if (!currentArchive) {
       set({ error: "No archive is currently open" });
-      return;
+      return undefined;
     }
     const parent = getParentPath(currentArchive);
     const archiveName = currentArchive.split("\\").pop()?.split("/").pop() ?? "extracted";
@@ -354,6 +366,12 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
     }
     const destination = parent ? `${parent}/${folderName}` : folderName;
     await get().extractArchive(destination);
+    // Return destination only if extraction succeeded (no error, not waiting for password)
+    const { error, needsPassword } = get();
+    if (!error && !needsPassword) {
+      return destination;
+    }
+    return undefined;
   },
 
   // Clear error
@@ -621,6 +639,16 @@ export const useArchiveStore = create<ArchiveState>((set, get) => ({
       set({ isLoading: false, extractProgress: null, createProgress: null });
     } catch (err) {
       console.error("Failed to cancel operation:", err);
+    }
+  },
+
+  // Check available disk space for a destination path.
+  // Returns available bytes, or 0 if the check fails.
+  checkDiskSpace: async (path: string): Promise<number> => {
+    try {
+      return await invoke<number>("get_available_space", { path });
+    } catch {
+      return 0;
     }
   },
 }));

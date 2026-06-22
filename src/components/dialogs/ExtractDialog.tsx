@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { FolderOpen, FolderOutput, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { useArchiveStore } from "../../store/archiveStore";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -80,6 +81,10 @@ export function ExtractDialog({ open: isOpen, onOpenChange }: ExtractDialogProps
           destination,
           overwrite,
         });
+        toast.success("Extracted successfully", {
+          description: destination,
+          duration: 4000,
+        });
       } catch (err) {
         console.error("Batch extract failed:", err);
       }
@@ -90,6 +95,18 @@ export function ExtractDialog({ open: isOpen, onOpenChange }: ExtractDialogProps
       // Try without password (will trigger fallback if needed)
       await extractArchive(destination, overwrite);
     }
+
+    // Show success toast for non-batch extractions that succeeded
+    if (!(hasSelection && !encrypted)) {
+      const { error, needsPassword } = useArchiveStore.getState();
+      if (!error && !needsPassword) {
+        toast.success("Extracted successfully", {
+          description: destination,
+          duration: 4000,
+        });
+      }
+    }
+
     onOpenChange(false);
     setDestination("");
     setPassword("");

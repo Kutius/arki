@@ -2,6 +2,56 @@ pub mod services;
 
 use base64::{Engine as _, engine::general_purpose};
 use services::archive::{ArchiveInfo, ArchiveService, CreateOptions, CreateProgress, ExtractOptions, ExtractProgress};
+
+/// Returns available disk space in bytes for the volume containing `path`.
+#[command]
+fn get_available_space(path: String) -> u64 {
+    let p = std::path::Path::new(&path);
+    // Walk up to find an existing ancestor (the path itself may not exist yet)
+    let check_path = if p.exists() {
+        p.to_path_buf()
+    } else {
+        let mut ancestor = p.parent();
+        loop {
+            match ancestor {
+                Some(a) if a.exists() => break a.to_path_buf(),
+                Some(a) => ancestor = a.parent(),
+                None => break std::path::PathBuf::from("C:\\"),
+            }
+        }
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+
+        let wide: Vec<u16> = OsStr::new(&check_path)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let mut free_bytes: u64 = 0;
+        let result = unsafe {
+            GetDiskFreeSpaceExW(
+                windows::core::PCWSTR(wide.as_ptr()),
+                Some(&mut free_bytes),
+                None,
+                None,
+            )
+        };
+        match result {
+            Ok(()) => free_bytes,
+            Err(_) => 0,
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = check_path;
+        0
+    }
+}
 use services::history::{HistoryEntry, HistoryService};
 use services::settings::{Settings, SettingsService};
 use std::path::PathBuf;
@@ -565,7 +615,8 @@ pub fn run() {
             save_settings,
             extract_single_file,
             cancel_operation,
-            get_pending_open
+            get_pending_open,
+            get_available_space
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

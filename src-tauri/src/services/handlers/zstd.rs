@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 const IO_BUFFER_SIZE: usize = 64 * 1024; // 64KB
 
-use crate::services::archive::{ArchiveEntry, ArchiveInfo, ExtractOptions, ExtractProgress};
+use crate::services::archive::{ArchiveEntry, ArchiveInfo, ExtractOptions, ExtractProgress, HealthInfo};
 use crate::services::archive_handler::{chunked_copy, ArchiveHandler};
 
 pub struct ZstdHandler;
@@ -44,6 +44,7 @@ impl ArchiveHandler for ZstdHandler {
             compressed_size: metadata.len(),
             format: "zst".to_string(),
             encrypted: false,
+            health: HealthInfo::default(),
         })
     }
 

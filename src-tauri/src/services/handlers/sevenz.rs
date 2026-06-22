@@ -7,7 +7,7 @@ use sevenz_rust::{Password, SevenZReader};
 
 const IO_BUFFER_SIZE: usize = 64 * 1024; // 64KB
 
-use crate::services::archive::{ArchiveEntry, ArchiveInfo, ExtractOptions, ExtractProgress};
+use crate::services::archive::{ArchiveEntry, ArchiveInfo, ExtractOptions, ExtractProgress, HealthInfo};
 use crate::services::archive_handler::ArchiveHandler;
 
 pub struct SevenzHandler;
@@ -143,6 +143,7 @@ impl SevenzHandler {
                         compressed_size: file_metadata.len(),
                         format: "7z".to_string(),
                         encrypted: true,
+                        health: HealthInfo::default(),
                     });
                 }
                 return Err(format!("Failed to open 7z archive: {}", e));
@@ -181,6 +182,7 @@ impl SevenzHandler {
             compressed_size,
             format: "7z".to_string(),
             encrypted: false,
+            health: HealthInfo::default(),
         })
     }
 }

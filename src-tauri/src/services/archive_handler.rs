@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use super::archive::{ArchiveInfo, CreateOptions, CreateProgress, ExtractOptions, ExtractProgress};
+use super::archive::{ArchiveInfo, CreateOptions, CreateProgress, ExtractOptions, ExtractProgress, HealthInfo};
 
 const PROGRESS_CHUNK_SIZE: usize = 1024 * 1024; // 1MB
 
@@ -121,6 +121,15 @@ pub trait ArchiveHandler: Send + Sync {
         Err("Password-protected extraction not supported for this format".to_string())
     }
     fn extensions(&self) -> Vec<&'static str>;
+
+    /// Lightweight integrity verification. Returns health status with any warnings.
+    /// Default: always OK (override per-handler for real checks).
+    fn verify(&self, _path: &Path) -> HealthInfo {
+        HealthInfo {
+            status: "ok".to_string(),
+            warnings: vec![],
+        }
+    }
 }
 
 /// Count total files recursively in a list of source paths.

@@ -13,7 +13,9 @@ import { formatFileSize, getPreviewType } from "../../lib/format";
 import type { PreviewType } from "../../lib/format";
 import type { ArchiveEntry } from "../../store/archiveStore";
 import { useSlideIn } from "../../lib/animations";
+import { Badge } from "../ui/badge";
 import { ScrollArea } from "../ui/scroll-area";
+import { Skeleton } from "../ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { useArchiveStore } from "../../store/archiveStore";
 
@@ -75,7 +77,7 @@ export function DetailPanel({
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/50">Details</span>
         <div className="flex items-center gap-2">
           {format && (
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/25">{format}</span>
+            <Badge variant="secondary" className="text-[9px] px-1 py-0">{format}</Badge>
           )}
           {onClose && (
             <button
@@ -104,41 +106,47 @@ export function DetailPanel({
             <div className="mb-3 flex items-center gap-0.5">
               {onOpenEntry && (
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => onOpenEntry(entry)}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-accent hover:text-accent-foreground active:scale-[0.97] transition-all"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        onClick={() => onOpenEntry(entry)}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-accent hover:text-accent-foreground active:scale-[0.97] transition-all"
+                      />
+                    }
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Open with default app</TooltipContent>
                 </Tooltip>
               )}
               {onExtractEntry && (
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => onExtractEntry(entry)}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-accent hover:text-accent-foreground active:scale-[0.97] transition-all"
-                    >
-                      <FolderOutput className="h-3.5 w-3.5" />
-                    </button>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        onClick={() => onExtractEntry(entry)}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-accent hover:text-accent-foreground active:scale-[0.97] transition-all"
+                      />
+                    }
+                  >
+                    <FolderOutput className="h-3.5 w-3.5" />
                   </TooltipTrigger>
                   <TooltipContent side="bottom">Extract this file</TooltipContent>
                 </Tooltip>
               )}
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(entry.path);
-                      toast.success("Path copied to clipboard");
-                    }}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-accent hover:text-accent-foreground active:scale-[0.97] transition-all"
-                  >
-                    <ClipboardCopy className="h-3.5 w-3.5" />
-                  </button>
+                <TooltipTrigger
+                  render={
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(entry.path);
+                        toast.success("Path copied to clipboard");
+                      }}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 hover:bg-accent hover:text-accent-foreground active:scale-[0.97] transition-all"
+                    />
+                  }
+                >
+                  <ClipboardCopy className="h-3.5 w-3.5" />
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Copy path</TooltipContent>
               </Tooltip>
@@ -159,7 +167,7 @@ export function DetailPanel({
           <div className="my-3 h-px bg-border" />
 
           {/* Properties */}
-          <div className="space-y-2.5">
+          <div className="flex flex-col gap-2.5">
             <PropertyRow
               label="Size"
               value={formatFileSize(entry.size)}
@@ -197,7 +205,7 @@ export function DetailPanel({
           {totalEntries !== undefined && (
             <>
               <div className="my-3 h-px bg-border" />
-              <div className="space-y-2.5">
+              <div className="flex flex-col gap-2.5">
                 <div className="flex items-center gap-1">
                   <Archive className="h-3 w-3 text-muted-foreground/40" />
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
@@ -257,10 +265,10 @@ function PreviewSection({
 
       <div className="overflow-hidden rounded-md bg-muted/20 border border-border/50">
         {isLoading ? (
-          <div className="space-y-2 p-3">
-            <div className="h-3 w-3/4 rounded bg-muted/40 animate-pulse" />
-            <div className="h-3 w-1/2 rounded bg-muted/40 animate-pulse" />
-            <div className="h-3 w-5/6 rounded bg-muted/40 animate-pulse" />
+          <div className="flex flex-col gap-2 p-3">
+            <Skeleton className="h-3 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-5/6" />
           </div>
         ) : previewType === "image" && previewImageUrl ? (
           <div className="flex items-center justify-center p-2 overflow-hidden">

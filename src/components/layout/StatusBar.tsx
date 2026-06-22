@@ -1,7 +1,8 @@
-import { Lock, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Lock, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Progress } from "../ui/progress";
-import { useArchiveStore } from "../../store/archiveStore";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { useArchiveStore, type HealthInfo } from "../../store/archiveStore";
 import { formatFileSize } from "../../lib/format";
 
 interface StatusBarProps {
@@ -11,6 +12,7 @@ interface StatusBarProps {
   totalSize?: string;
   encrypted?: boolean;
   selectedCount?: number;
+  health?: HealthInfo | null;
 }
 
 export function StatusBar({
@@ -20,6 +22,7 @@ export function StatusBar({
   totalSize,
   encrypted,
   selectedCount,
+  health,
 }: StatusBarProps) {
   const extractProgress = useArchiveStore((s) => s.extractProgress);
 
@@ -55,6 +58,33 @@ export function StatusBar({
             <Lock className="h-2.5 w-2.5 text-muted-foreground/40" />
             <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider">Encrypted</span>
           </div>
+        )}
+
+        {/* Health Indicator */}
+        {health && !extractProgress && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <div className="flex shrink-0 items-center gap-1 cursor-default">
+                  {health.status === "ok" ? (
+                    <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500/60" />
+                  ) : (
+                    <AlertTriangle className="h-2.5 w-2.5 text-amber-500/70" />
+                  )}
+                  {health.status !== "ok" && (
+                    <span className="text-[9px] text-amber-500/60">
+                      {health.warnings.length} {health.warnings.length === 1 ? "issue" : "issues"}
+                    </span>
+                  )}
+                </div>
+              }
+            />
+            <TooltipContent side="top">
+              {health.status === "ok"
+                ? "Archive verified"
+                : health.warnings.join("; ")}
+            </TooltipContent>
+          </Tooltip>
         )}
 
         {/* Progress Bar */}

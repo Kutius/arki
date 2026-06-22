@@ -2,23 +2,26 @@ import {
   Clock,
   FilePlus,
   FolderOutput,
+  Loader2,
   PanelLeft,
   Search,
   Settings,
   X,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { Badge } from "../ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface ToolbarProps {
   archiveName?: string | null;
   format?: string | null;
   hasArchive: boolean;
+  isLoading: boolean;
   isSearchActive: boolean;
   isTreeOpen: boolean;
   onToggleSearch: () => void;
   onToggleTree: () => void;
-  onExtract: () => void;
+  onExtract: (e?: React.MouseEvent) => void;
   onCreate: () => void;
   onToggleHistory: () => void;
   onSettings: () => void;
@@ -29,6 +32,7 @@ export function Toolbar({
   archiveName,
   format,
   hasArchive,
+  isLoading,
   isSearchActive,
   isTreeOpen,
   onToggleSearch,
@@ -47,9 +51,9 @@ export function Toolbar({
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-[13px] font-medium truncate">{archiveName}</span>
             {format && (
-              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
                 {format}
-              </span>
+              </Badge>
             )}
           </div>
         ) : (
@@ -61,40 +65,44 @@ export function Toolbar({
       {hasArchive && (
         <>
           <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onToggleTree}
-                className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                  isTreeOpen
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50",
-                )}
-              >
-                <PanelLeft className="h-3.5 w-3.5" />
-              </button>
+            <TooltipTrigger
+              render={
+                <button
+                  onClick={onToggleTree}
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                    isTreeOpen
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50",
+                  )}
+                />
+              }
+            >
+              <PanelLeft className="h-3.5 w-3.5" />
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {isTreeOpen ? "Hide tree (Ctrl+B)" : "Show tree (Ctrl+B)"}
             </TooltipContent>
           </Tooltip>
           <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onToggleSearch}
-                className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                  isSearchActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50",
-                )}
-              >
-                {isSearchActive ? (
-                  <X className="h-3.5 w-3.5" />
-                ) : (
-                  <Search className="h-3.5 w-3.5" />
-                )}
-              </button>
+            <TooltipTrigger
+              render={
+                <button
+                  onClick={onToggleSearch}
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                    isSearchActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50",
+                  )}
+                />
+              }
+            >
+              {isSearchActive ? (
+                <X className="h-3.5 w-3.5" />
+              ) : (
+                <Search className="h-3.5 w-3.5" />
+              )}
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {isSearchActive ? "Close search" : "Search (Ctrl+F)"}
@@ -106,33 +114,41 @@ export function Toolbar({
       {/* Right: Actions */}
       <div className="flex items-center gap-1">
         <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onExtract}
-              disabled={!hasArchive}
-              className={cn(
-                "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium transition-colors",
-                hasArchive
-                  ? "bg-primary/10 text-primary hover:bg-primary/20"
-                  : "text-muted-foreground/25 cursor-not-allowed",
-              )}
-            >
+          <TooltipTrigger
+            render={
+              <button
+                onClick={(e) => onExtract(e)}
+                disabled={!hasArchive}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium transition-colors",
+                  hasArchive
+                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                    : "text-muted-foreground/25 cursor-not-allowed",
+                )}
+              />
+            }
+          >
+            {isLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
               <FolderOutput className="h-3.5 w-3.5" />
-              Extract
-            </button>
+            )}
+            {isLoading ? "Extracting…" : "Extract"}
           </TooltipTrigger>
-          <TooltipContent side="bottom">Extract archive (Ctrl+E)</TooltipContent>
+          <TooltipContent side="bottom">Extract to folder · Alt+click for options</TooltipContent>
         </Tooltip>
 
         <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onCreate}
-              className="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium text-muted-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <FilePlus className="h-3.5 w-3.5" />
-              Create
-            </button>
+          <TooltipTrigger
+            render={
+              <button
+                onClick={onCreate}
+                className="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium text-muted-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors"
+              />
+            }
+          >
+            <FilePlus className="h-3.5 w-3.5" />
+            Create
           </TooltipTrigger>
           <TooltipContent side="bottom">Create archive (Ctrl+N)</TooltipContent>
         </Tooltip>
@@ -140,30 +156,34 @@ export function Toolbar({
         <div className="w-px h-4 bg-border mx-1" />
 
         <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onToggleHistory}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                isHistoryOpen
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50",
-              )}
-            >
-              <Clock className="h-3.5 w-3.5" />
-            </button>
+          <TooltipTrigger
+            render={
+              <button
+                onClick={onToggleHistory}
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                  isHistoryOpen
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/50",
+                )}
+              />
+            }
+          >
+            <Clock className="h-3.5 w-3.5" />
           </TooltipTrigger>
           <TooltipContent side="bottom">Recent archives</TooltipContent>
         </Tooltip>
 
         <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onSettings}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <Settings className="h-3.5 w-3.5" />
-            </button>
+          <TooltipTrigger
+            render={
+              <button
+                onClick={onSettings}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+              />
+            }
+          >
+            <Settings className="h-3.5 w-3.5" />
           </TooltipTrigger>
           <TooltipContent side="bottom">Settings</TooltipContent>
         </Tooltip>

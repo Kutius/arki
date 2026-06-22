@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FilePlus,
   FolderOutput,
+  FolderOpen,
   Lock,
   Pencil,
   Plus,
@@ -34,6 +35,7 @@ import { Toolbar } from "./components/layout/Toolbar";
 import {
   ContextMenu,
   ContextMenuContent,
+  ContextMenuGroup,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
@@ -54,6 +56,7 @@ function App() {
     compressedSize,
     format,
     encrypted,
+    health,
     isLoading,
     error,
     selectedEntry,
@@ -131,6 +134,67 @@ function App() {
 
   const isZipArchive = format === "zip";
 
+  const handleExtractComplete = async (dest: string) => {
+    // Auto-open the destination folder
+    try {
+      await openPath(dest);
+    } catch {
+      // Fallback: show toast if auto-open fails
+      toast.success("Extracted successfully", {
+        description: dest,
+        duration: 6000,
+      });
+    }
+  };
+
+  const handleQuickExtract = async () => {
+    if (!currentArchive) return;
+    // Disk space pre-check
+    const { checkDiskSpace, totalSize } = useArchiveStore.getState();
+    const parent = currentArchive.includes("\\")
+      ? currentArchive.substring(0, currentArchive.lastIndexOf("\\"))
+      : currentArchive.includes("/")
+        ? currentArchive.substring(0, currentArchive.lastIndexOf("/"))
+        : "";
+    if (parent) {
+      const available = await checkDiskSpace(parent);
+      if (available > 0 && totalSize > available) {
+        toast.warning("Low disk space", {
+          description: `Need ${formatFileSize(totalSize)}, only ${formatFileSize(available)} free. Extracting anyway...`,
+          duration: 5000,
+        });
+      }
+    }
+    const archiveName = currentArchive.split("\\").pop()?.split("/").pop() ?? "archive";
+    let folderName = archiveName;
+    if (folderName.toLowerCase().endsWith(".tar.gz")) {
+      folderName = folderName.slice(0, -7);
+    } else {
+      const dotIndex = folderName.lastIndexOf(".");
+      if (dotIndex > 0) folderName = folderName.slice(0, dotIndex);
+    }
+    const loadingId = toast.loading(`Extracting to ${folderName}…`);
+    const dest = await extractArchiveToFolder();
+    toast.dismiss(loadingId);
+    const { error, needsPassword } = useArchiveStore.getState();
+    if (!error && !needsPassword && dest) {
+      handleExtractComplete(dest);
+    }
+  };
+
+  const handleExtractHere = async () => {
+    const loadingId = toast.loading("Extracting here…");
+    await extractArchiveHere();
+    toast.dismiss(loadingId);
+    const { error, needsPassword } = useArchiveStore.getState();
+    if (!error && !needsPassword) {
+      toast.success("Extracted successfully", {
+        description: "Files extracted to archive location",
+        duration: 4000,
+      });
+    }
+  };
+
   const handleDeleteEntries = async () => {
     if (!currentArchive || !isZipArchive) return;
     const selected = getSelectedEntries();
@@ -197,7 +261,7 @@ function App() {
   const shortcuts = useMemo(
     () => ({
       "ctrl+e": () => {
-        if (currentArchive) setExtractDialogOpen(true);
+        if (currentArchive) handleQuickExtract();
       },
       "ctrl+n": () => {
         setCreateDialogOpen(true);
@@ -271,7 +335,7 @@ function App() {
   const archiveName = currentArchive?.split("\\").pop()?.split("/").pop() ?? null;
 
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delay={300}>
       <div className="flex h-screen flex-col overflow-hidden bg-background">
         <TitleBar />
 
@@ -279,11 +343,19 @@ function App() {
           archiveName={archiveName}
           format={format}
           hasArchive={!!currentArchive}
+          isLoading={isLoading}
           isSearchActive={isSearchActive}
           isTreeOpen={isTreeOpen}
           onToggleSearch={() => setIsSearchActive((prev) => !prev)}
           onToggleTree={() => setIsTreeOpen((prev) => !prev)}
-          onExtract={() => currentArchive && setExtractDialogOpen(true)}
+          onExtract={(e) => {
+            if (!currentArchive) return;
+            if (e?.altKey) {
+              setExtractDialogOpen(true);
+            } else {
+              handleQuickExtract();
+            }
+          }}
           onCreate={() => setCreateDialogOpen(true)}
           onToggleHistory={() => setIsHistoryOpen((prev) => !prev)}
           onSettings={() => setSettingsDialogOpen(true)}
@@ -309,113 +381,123 @@ function App() {
                 />
               )}
               <ContextMenu>
-                <ContextMenuTrigger asChild>
-                  <div className="flex flex-1 flex-col overflow-hidden">
-                    <FileListView
-                      entries={entries}
-                      currentPath={currentPath}
-                      onNavigate={setCurrentPath}
-                      onEntrySelect={setSelectedEntry}
-                      onEntryMultiSelect={toggleEntrySelection}
-                      onEntryDoubleClick={handleEntryDoubleClick}
-                      onEntryDelete={isZipArchive ? handleDeleteEntries : undefined}
-                      selectedEntries={selectedEntries}
-                      searchVisible={isSearchActive}
-                      onSearchClose={() => setIsSearchActive(false)}
-                    />
-                  </div>
+                <ContextMenuTrigger
+                  render={
+                    <div className="flex flex-1 flex-col overflow-hidden" />
+                  }
+                >
+                  <FileListView
+                    entries={entries}
+                    currentPath={currentPath}
+                    onNavigate={setCurrentPath}
+                    onEntrySelect={setSelectedEntry}
+                    onEntryMultiSelect={toggleEntrySelection}
+                    onEntryDoubleClick={handleEntryDoubleClick}
+                    onEntryDelete={isZipArchive ? handleDeleteEntries : undefined}
+                    selectedEntries={selectedEntries}
+                    searchVisible={isSearchActive}
+                    onSearchClose={() => setIsSearchActive(false)}
+                    pinnedEntry={selectedEntry}
+                  />
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                  <ContextMenuItem
-                    disabled={!currentArchive}
-                    onClick={() => setExtractDialogOpen(true)}
-                  >
-                    <FolderOutput className="mr-2 h-4 w-4" />
-                    {selectedEntries.size > 1
-                      ? `Extract selected (${selectedEntries.size} files)...`
-                      : "Extract to..."}
-                    <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Ctrl+E</span>
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={!currentArchive}
-                    onClick={extractArchiveHere}
-                  >
-                    <FolderOutput className="mr-2 h-4 w-4" />
-                    Extract Here
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={!currentArchive}
-                    onClick={extractArchiveToFolder}
-                  >
-                    <FolderOutput className="mr-2 h-4 w-4" />
-                    Extract to Folder
-                  </ContextMenuItem>
+                  <ContextMenuGroup>
+                    <ContextMenuItem
+                      disabled={!currentArchive}
+                      onClick={handleQuickExtract}
+                    >
+                      <FolderOutput className="mr-2 h-4 w-4" />
+                      Extract to Folder
+                      <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Ctrl+E</span>
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={!currentArchive}
+                      onClick={handleExtractHere}
+                    >
+                      <FolderOutput className="mr-2 h-4 w-4" />
+                      Extract Here
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={!currentArchive}
+                      onClick={() => setExtractDialogOpen(true)}
+                    >
+                      <FolderOpen className="mr-2 h-4 w-4" />
+                      {selectedEntries.size > 1
+                        ? `Extract selected (${selectedEntries.size} files) to...`
+                        : "Extract to..."}
+                    </ContextMenuItem>
+                  </ContextMenuGroup>
                   <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => setCreateDialogOpen(true)}>
-                    <FilePlus className="mr-2 h-4 w-4" />
-                    Create Archive...
-                    <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Ctrl+N</span>
-                  </ContextMenuItem>
-                  {isZipArchive && (
-                    <>
-                      <ContextMenuSeparator />
+                  <ContextMenuGroup>
+                    <ContextMenuItem onClick={() => setCreateDialogOpen(true)}>
+                      <FilePlus className="mr-2 h-4 w-4" />
+                      Create Archive...
+                      <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Ctrl+N</span>
+                    </ContextMenuItem>
+                    {isZipArchive && (
                       <ContextMenuItem onClick={handleAddToArchive}>
                         <Plus className="mr-2 h-4 w-4" />
                         Add Files to Archive...
                       </ContextMenuItem>
-                    </>
-                  )}
+                    )}
+                  </ContextMenuGroup>
                   <ContextMenuSeparator />
-                  <ContextMenuItem disabled={!selectedEntry} onClick={() => selectedEntry && handleEntryDoubleClick(selectedEntry)}>
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open
-                    <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Enter</span>
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={!selectedEntry}
-                    onClick={() => {
-                      if (selectedEntry) {
-                        navigator.clipboard.writeText(selectedEntry.path);
-                        toast.success("Path copied");
-                      }
-                    }}
-                  >
-                    <ClipboardCopy className="mr-2 h-4 w-4" />
-                    Copy Path
-                  </ContextMenuItem>
+                  <ContextMenuGroup>
+                    <ContextMenuItem disabled={!selectedEntry} onClick={() => selectedEntry && handleEntryDoubleClick(selectedEntry)}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Open
+                      <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Enter</span>
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={!selectedEntry}
+                      onClick={() => {
+                        if (selectedEntry) {
+                          navigator.clipboard.writeText(selectedEntry.path);
+                          toast.success("Path copied");
+                        }
+                      }}
+                    >
+                      <ClipboardCopy className="mr-2 h-4 w-4" />
+                      Copy Path
+                    </ContextMenuItem>
+                  </ContextMenuGroup>
                   {isZipArchive && selectedEntry && (
                     <>
                       <ContextMenuSeparator />
-                      <ContextMenuItem onClick={handleRenameEntry}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Rename
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        onClick={handleDeleteEntries}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                        <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Del</span>
-                      </ContextMenuItem>
+                      <ContextMenuGroup>
+                        <ContextMenuItem onClick={handleRenameEntry}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Rename
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          onClick={handleDeleteEntries}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                          <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Del</span>
+                        </ContextMenuItem>
+                      </ContextMenuGroup>
                     </>
                   )}
                   <ContextMenuSeparator />
-                  <ContextMenuItem
-                    disabled={!currentArchive || entries.length === 0}
-                    onClick={selectAll}
-                  >
-                    <CheckSquare className="mr-2 h-4 w-4" />
-                    Select All
-                    <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Ctrl+A</span>
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={selectedEntries.size === 0}
-                    onClick={deselectAll}
-                  >
-                    <Square className="mr-2 h-4 w-4" />
-                    Deselect All
-                  </ContextMenuItem>
+                  <ContextMenuGroup>
+                    <ContextMenuItem
+                      disabled={!currentArchive || entries.length === 0}
+                      onClick={selectAll}
+                    >
+                      <CheckSquare className="mr-2 h-4 w-4" />
+                      Select All
+                      <span className="ml-auto text-[10px] tracking-widest text-muted-foreground/40">Ctrl+A</span>
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={selectedEntries.size === 0}
+                      onClick={deselectAll}
+                    >
+                      <Square className="mr-2 h-4 w-4" />
+                      Deselect All
+                    </ContextMenuItem>
+                  </ContextMenuGroup>
                 </ContextMenuContent>
               </ContextMenu>
 
@@ -440,17 +522,12 @@ function App() {
         </div>
 
         <StatusBar
-          status={
-            isLoading
-              ? "Loading..."
-              : currentArchive
-                ? `Ready`
-                : ""
-          }
+          status={isLoading ? "Loading..." : undefined}
           itemCount={entries.length}
           totalSize={entries.length > 0 ? formatFileSize(archiveTotalSize) : undefined}
           encrypted={encrypted}
           selectedCount={selectedEntries.size}
+          health={health}
         />
 
         <ExtractDialog open={extractDialogOpen} onOpenChange={setExtractDialogOpen} />
@@ -480,7 +557,7 @@ function App() {
 
         {isDragOver && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md transition-all">
-            <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 px-20 py-14">
+            <div className="drag-border-glow flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 px-20 py-14">
               <Upload ref={dragIconRef} className="h-10 w-10 text-primary/50" />
               <div className="text-center">
                 <p className="text-[13px] font-medium text-primary/70">
@@ -506,7 +583,7 @@ function EncryptedState({ onExtract }: { onExtract: () => void }) {
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/40">
         <Lock className="h-7 w-7 text-muted-foreground/25" strokeWidth={1.5} />
       </div>
-      <div className="text-center space-y-1.5">
+      <div className="text-center flex flex-col gap-1.5">
         <p className="text-[15px] font-medium text-foreground/50">Encrypted Archive</p>
         <p className="text-[12px] text-muted-foreground/30">
           Password protected. Extract to continue.

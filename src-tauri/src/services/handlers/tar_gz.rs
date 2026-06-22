@@ -8,7 +8,7 @@ use tar::Archive;
 
 const IO_BUFFER_SIZE: usize = 64 * 1024; // 64KB
 
-use crate::services::archive::{ArchiveEntry, ArchiveInfo, CreateOptions, CreateProgress, ExtractOptions, ExtractProgress};
+use crate::services::archive::{ArchiveEntry, ArchiveInfo, CreateOptions, CreateProgress, ExtractOptions, ExtractProgress, HealthInfo};
 use crate::services::archive_handler::{chunked_copy, ArchiveHandler, count_files_in_sources, count_files_in_dir, calculate_total_size, calculate_dir_size};
 
 pub struct TarGzHandler;
@@ -74,6 +74,7 @@ impl ArchiveHandler for TarGzHandler {
             compressed_size,
             format: "tar.gz".to_string(),
             encrypted: false,
+            health: HealthInfo::default(),
         })
     }
 

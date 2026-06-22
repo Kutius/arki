@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use crate::services::archive::{ArchiveEntry, ArchiveInfo, ExtractOptions, ExtractProgress};
+use crate::services::archive::{ArchiveEntry, ArchiveInfo, ExtractOptions, ExtractProgress, HealthInfo};
 use crate::services::archive_handler::ArchiveHandler;
 
 pub struct RarHandler;
@@ -57,6 +57,7 @@ impl ArchiveHandler for RarHandler {
             compressed_size,
             format: "rar".to_string(),
             encrypted: false, // RAR encryption detection not implemented
+            health: HealthInfo::default(),
         })
     }
 

@@ -134,66 +134,68 @@ function HistoryItem({
   const formatBadgeClass = getFormatBadgeClass(item.format);
 
   return (
-    <Tooltip delayDuration={500}>
-      <TooltipTrigger asChild>
-        <div
-          className={cn(
-            "group flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-sm transition-colors cursor-pointer overflow-hidden",
-            isActive
-              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-              : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
-          )}
-          onClick={onOpen}
-        >
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/20">
-            <FileArchive className="h-3 w-3 text-muted-foreground/40" />
-          </div>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <div
+            className={cn(
+              "group flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-sm transition-colors cursor-pointer overflow-hidden",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+            )}
+            onClick={onOpen}
+          />
+        }
+      >
+        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/20">
+          <FileArchive className="h-3 w-3 text-muted-foreground/40" />
+        </div>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 overflow-hidden">
-              <span className="min-w-0 truncate text-[12px] font-medium">{item.name}</span>
-              <span className={cn(
-                "shrink-0 rounded px-1 py-0.5 text-[8px] font-semibold uppercase leading-none",
-                formatBadgeClass,
-              )}>
-                {item.format}
-              </span>
-            </div>
-            <p className="truncate text-[10px] text-muted-foreground/35 mt-0.5">
-              {parentPath || "Unknown location"}
-            </p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            <span className="min-w-0 truncate text-[12px] font-medium">{item.name}</span>
+            <span className={cn(
+              "shrink-0 rounded px-1 py-0.5 text-[8px] font-semibold uppercase leading-none",
+              formatBadgeClass,
+            )}>
+              {item.format}
+            </span>
           </div>
+          <p className="truncate text-[10px] text-muted-foreground/35 mt-0.5">
+            {parentPath || "Unknown location"}
+          </p>
+        </div>
 
-          <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleFavorite();
-              }}
-              className="rounded p-0.5 hover:bg-muted/50 transition-colors"
-              title={item.is_favorite ? "Remove from favorites" : "Add to favorites"}
-            >
-              {item.is_favorite ? (
-                <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-              ) : (
-                <Star className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors" />
-              )}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              className="rounded p-0.5 hover:bg-muted/50 opacity-0 group-hover:opacity-100 transition-all"
-              title="Remove from history"
-            >
-              <X className="h-3.5 w-3.5 text-muted-foreground/30 hover:text-muted-foreground/60" />
-            </button>
-          </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite();
+            }}
+            className="rounded p-0.5 hover:bg-muted/50 transition-colors"
+            title={item.is_favorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            {item.is_favorite ? (
+              <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+            ) : (
+              <Star className="h-3.5 w-3.5 text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors" />
+            )}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            className="rounded p-0.5 hover:bg-muted/50 opacity-0 group-hover:opacity-100 transition-all"
+            title="Remove from history"
+          >
+            <X className="h-3.5 w-3.5 text-muted-foreground/30 hover:text-muted-foreground/60" />
+          </button>
         </div>
       </TooltipTrigger>
       <TooltipContent side="right" className="max-w-[280px] bg-popover text-popover-foreground border border-border">
-        <div className="space-y-1.5">
+        <div className="flex flex-col gap-1.5">
           <p className="font-medium text-sm">{item.name}</p>
           <p className="text-xs text-muted-foreground break-all">{item.path}</p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
