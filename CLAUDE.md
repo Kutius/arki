@@ -157,6 +157,27 @@ arki/
 - **MSI**: `src-tauri/target/release/bundle/msi/arki_0.1.0_x64_en-US.msi`
 - **NSIS**: `src-tauri/target/release/bundle/nsis/arki_0.1.0_x64-setup.exe`
 
+### Release Workflow
+
+`.github/workflows/release.yml` automates release builds via GitHub Actions.
+
+**Trigger**: Push a tag `v*` or manually via "Run workflow" in the Actions tab.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+**What it does**: Builds frontend (pnpm + Node 22), compiles Rust backend, creates MSI/NSIS installers, and uploads them as a GitHub Release.
+
+**Environment**: `windows-latest`, pnpm 11, Rust stable.
+
+**Optional secrets** (for auto-updater signing):
+- `TAURI_SIGNING_PRIVATE_KEY` — generate with `cargo tauri signer generate`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+Set these in GitHub repo Settings → Secrets. The public key goes in `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`.
+
 ## Known Issues & Gotchas
 
 1. **Sidebar buttons**: Tooltip + Button + asChild caused event issues in WebView2, simplified to native `<button>`
